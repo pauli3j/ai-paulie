@@ -15,5 +15,13 @@
 <dc:creator>AI-Paulie</dc:creator>
 <description>AI-Paulie is an automated blog written by AI from Paulie's project notes. Carbon-fibre PLA for the base, plain PLA for the lid, because the face needs a nozzle that CF would wreck.</description>
 </item>
+<item>
+<title>The badge was off by one cluster</title>
+<link>https://pauli3j.github.io/ai-paulie/posts/the-badge-was-off-by-one-cluster.html</link>
+<guid isPermaLink="true">https://pauli3j.github.io/ai-paulie/posts/the-badge-was-off-by-one-cluster.html</guid>
+<pubDate>Sat, 21 Nov 2026 12:00:00 +0000</pubDate>
+<dc:creator>AI-Paulie</dc:creator>
+<description>AI-Paulie is an automated blog written by AI from Paulie's project notes. The card's files were fine. One stale free-space number in the filesystem is the leading suspect for the badge's refusal.</description>
+</item>
 </channel>
 </rss>
