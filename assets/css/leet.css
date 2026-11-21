@@ -1,0 +1,142 @@
+/* 1337 components. Every color and length comes from tokens.css; nothing here declares a token.
+   The grid: a VGA glyph is 0.5em wide and 1em tall, so 80 columns = 40em. */
+
+body { margin: 0; background: var(--screen); color: var(--text); font-family: var(--font-vga); font-size: 16px; line-height: 1;
+  -webkit-font-smoothing: none; font-smooth: never; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+.lt-stage { padding: var(--row-1) var(--col-2); display: flex; flex-direction: column; gap: var(--row-1); align-items: flex-start; min-width: 0; }
+.lt-stage-row { padding: var(--row-1) var(--col-2); display: flex; flex-wrap: wrap; gap: var(--row-1) var(--col-4); align-items: center; }
+
+/* ---------- text modes ---------- */
+.lt-pre { margin: 0; font: inherit; white-space: pre; overflow: hidden; }
+.lt-wrap { margin: 0; font: inherit; white-space: pre-wrap; overflow-wrap: anywhere; }
+.lt-code { margin: 0; font: inherit; white-space: pre; overflow-x: auto; overflow-y: hidden; }
+.lt-hd { display: inline; font: inherit; margin: 0; padding: 0; color: inherit; }
+.lt-sr { position: absolute; left: -9999px; }
+
+/* ---------- color classes: semantic first, then the sixteen ---------- */
+.lt-text { color: var(--text); } .lt-bright { color: var(--text-bright); } .lt-dim { color: var(--dim); }
+.lt-heading { color: var(--heading); } .lt-hot { color: var(--hotkey); } .lt-ok { color: var(--ok); }
+.lt-alert { color: var(--alert); } .lt-egg { color: var(--egg); } .lt-border { color: var(--border); }
+.lt-black { color: var(--black); } .lt-blue { color: var(--blue); } .lt-green { color: var(--green); } .lt-cyan { color: var(--cyan); }
+.lt-red { color: var(--red); } .lt-magenta { color: var(--magenta); } .lt-brown { color: var(--brown); } .lt-light-gray { color: var(--light-gray); }
+.lt-dark-gray { color: var(--dark-gray); } .lt-light-blue { color: var(--light-blue); } .lt-light-green { color: var(--light-green); }
+.lt-light-cyan { color: var(--light-cyan); } .lt-light-red { color: var(--light-red); } .lt-light-magenta { color: var(--light-magenta); }
+.lt-yellow { color: var(--yellow); } .lt-white { color: var(--white); }
+
+/* ---------- Screen ---------- */
+.lt-screen { width: var(--cols-80); max-width: 100%; margin: 0 auto; padding: var(--page-top) var(--gutter); box-sizing: border-box;
+  background: var(--screen); color: var(--text); font-family: var(--font-vga); line-height: 1; min-width: 0;
+  font-size: clamp(9px, calc((100vw - 2rem) / 40), 20px); }
+.lt-screen-fixed { font-size: 16px; }
+.lt-screen-40, .lt-screen-40.lt-screen-fixed { width: var(--cols-40); }
+@media (max-width: 640px) {
+  .lt-screen-auto { width: var(--cols-40); font-size: clamp(12px, calc((100vw - 1rem) / 20), 22px); }
+}
+.lt-screen > * + * { margin-top: 0; }
+
+/* ---------- Link ---------- */
+.lt-link { color: var(--link); text-decoration: none; }
+.lt-link:hover, .lt-link:focus-visible { background: var(--link-hover); color: var(--screen); outline: none; }
+.lt-link-off { color: var(--dim); cursor: default; pointer-events: none; }
+.lt-link-current { color: var(--text-bright); }
+
+/* ---------- Cursor ---------- */
+.lt-cursor { background: var(--cursor); color: var(--screen); display: inline-block; width: var(--cell-w); height: var(--cell-h); vertical-align: bottom; }
+.lt-blink { animation: lt-blink var(--blink) steps(1) infinite; }
+@keyframes lt-blink { 50% { opacity: 0; } }
+
+/* ---------- Frame / Rule / Banner ---------- */
+.lt-frame { color: var(--border); }
+.lt-frame .lt-seg { color: var(--text); }
+.lt-frame .lt-seg-lead { color: var(--link); }
+.lt-frame .lt-sep { color: var(--dim); }
+.lt-rule { color: var(--border); }
+.lt-rule .lt-rule-label { color: var(--heading); }
+.lt-banner { color: var(--text); }
+
+/* ---------- InfoList ---------- */
+.lt-info .lt-key { color: var(--text); }
+.lt-info .lt-val { color: var(--text-bright); }
+.lt-info .lt-note { color: var(--dim); }
+
+/* ---------- Menu ---------- */
+.lt-menu { color: var(--text); }
+.lt-menu .lt-hot { color: var(--hotkey); }
+.lt-menu-prompt { color: var(--text); }
+
+/* ---------- Bulletin / Code ---------- */
+.lt-bulletin { color: var(--text); }
+.lt-bulletin .lt-egg { color: var(--egg); }
+.lt-code-block { color: var(--text); }
+.lt-code-label { color: var(--dim); }
+
+/* ---------- Field ---------- */
+.lt-field { display: inline; }
+.lt-field-label { color: var(--text); }
+.lt-field-input { font: inherit; background: var(--field); color: var(--field-text); border: 0; border-radius: var(--radius-0); padding: 0 var(--col-1);
+  width: 24ch; max-width: 100%; caret-color: var(--field-text); }
+.lt-field-input::placeholder { color: var(--field-text); opacity: 1; }
+.lt-field-input:focus { outline: 1px solid var(--link); }
+.lt-field-error { color: var(--alert); }
+.lt-field-hint { color: var(--dim); }
+
+/* ---------- Button ---------- */
+.lt-btn { font: inherit; line-height: inherit; background: var(--control); color: var(--screen); border: 0; border-radius: var(--radius-0); padding: 0 var(--col-2); cursor: pointer; touch-action: manipulation; }
+.lt-btn:hover, .lt-btn:focus-visible { background: var(--control-hover); outline: none; }
+.lt-btn-hot { background: transparent; color: var(--hotkey); padding: 0; }
+.lt-btn-hot:hover, .lt-btn-hot:focus-visible { background: var(--link-hover); color: var(--screen); }
+.lt-btn:disabled { background: transparent; color: var(--dim); cursor: default; }
+
+/* ---------- FileArea ---------- */
+.lt-filearea > summary { cursor: pointer; list-style: none; }
+.lt-filearea > summary::-webkit-details-marker { display: none; }
+.lt-filearea .lt-ind::before { content: "[+]"; color: var(--hotkey); }
+.lt-filearea[open] .lt-ind::before { content: "[-]"; }
+.lt-filearea > summary:hover, .lt-filearea > summary:focus-visible { background: var(--link-hover); color: var(--screen); outline: none; }
+.lt-filearea > summary:hover span, .lt-filearea > summary:focus-visible span { color: var(--screen); }
+.lt-filearea > summary:hover .lt-ind::before, .lt-filearea > summary:focus-visible .lt-ind::before { color: var(--screen); }
+.lt-filearea[open] { margin-bottom: var(--row-1); }
+.lt-filearea .lt-section-title { color: var(--text-bright); }
+.lt-cols { display: block; }
+@media (min-width: 641px) { .lt-cols { column-count: 2; column-gap: var(--col-4); } }
+.lt-cols-1 { column-count: 1; }
+.lt-filearea .lt-bullet { color: var(--dim); }
+
+/* ---------- Window ---------- */
+.lt-window { display: flex; align-items: stretch; width: var(--cols-80); max-width: 100%; min-width: 0; }
+.lt-window-40 { width: var(--cols-40); }
+.lt-window-port { flex: 1 1 auto; min-width: 0; height: var(--port-rows); overflow: auto; background: var(--screen); color: var(--text); }
+.lt-window-edge, .lt-window-bar { flex: 0 0 auto; width: var(--cell-w); white-space: pre; color: var(--dim); overflow: hidden; }
+.lt-window-bar .lt-thumb { color: var(--text); }
+.lt-window-title { color: var(--border); }
+.lt-window-title .lt-rule-label { color: var(--heading); }
+
+/* ---------- Status ---------- */
+.lt-status { white-space: pre; }
+.lt-status .lt-br { color: var(--dim); }
+.lt-status-ok .lt-word { color: var(--ok); }
+.lt-status-warn .lt-word { color: var(--heading); }
+.lt-status-crit .lt-word { color: var(--alert); }
+.lt-status-info .lt-word { color: var(--text-bright); }
+.lt-status-off .lt-word { color: var(--dim); }
+.lt-status .lt-status-text { color: var(--text); }
+
+/* ---------- Table ---------- */
+.lt-table { color: var(--border); }
+.lt-table .lt-th { color: var(--heading); }
+.lt-table .lt-td { color: var(--text); }
+
+/* ---------- Progress ---------- */
+.lt-progress { white-space: pre; color: var(--text); }
+.lt-progress .lt-fill { color: var(--ok); }
+.lt-progress-alert .lt-fill { color: var(--alert); }
+.lt-progress-heading .lt-fill { color: var(--heading); }
+.lt-progress .lt-track { color: var(--dim); }
+.lt-progress .lt-br { color: var(--dim); }
+
+/* ---------- modem reveal ---------- */
+[data-modem] .lt-screen { visibility: hidden; }
+
+@media (prefers-reduced-motion: reduce) {
+  .lt-blink { animation: none; }
+}

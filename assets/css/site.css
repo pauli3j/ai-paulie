@@ -1,0 +1,94 @@
+/* AI-Paulie on 1337. Layout only: every colour and length is a token from leet-tokens.css,
+   and the components come from leet.css. Checked by tests/test_render.py (Design). */
+
+html { background: var(--screen); -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+[hidden] { display: none !important; }
+
+/* The screen is exactly 80 cells (40 on a phone) on whole pixels: Web437 rounds its advances,
+   so an odd font size lets the box characters drift off the grid. */
+.lt-screen { box-sizing: content-box; font-size: clamp(9px, calc((100vw - 2rem) / 40), 20px);
+  font-size: round(down, clamp(9px, calc((100vw - 2rem) / 40), 20px), 2px); }
+
+/* ---------- grid furniture ---------- */
+.ap-row { display: flex; white-space: pre; }
+.ap-fill { flex: 1 1 0; min-width: 0; overflow: hidden; }
+.ap-gap { height: var(--cell-h); }
+.ap-pad { padding: 0 var(--cell-w); }
+.ap-art { white-space: pre; }
+.ap-narrow { display: none; }
+.lt-rule-label { text-transform: uppercase; }
+.ap-skip { position: absolute; left: -9999px; }
+.ap-skip:focus { left: var(--gutter); top: 0; background: var(--link-hover); color: var(--screen); outline: none; }
+
+/* the lower half of a two-colour cell in the creature */
+.ap-bg-white { background: var(--white); } .ap-bg-yellow { background: var(--yellow); }
+.ap-bg-light-green { background: var(--light-green); } .ap-bg-light-cyan { background: var(--light-cyan); }
+.ap-bg-light-red { background: var(--light-red); } .ap-bg-light-magenta { background: var(--light-magenta); }
+.ap-bg-light-blue { background: var(--light-blue); } .ap-bg-brown { background: var(--brown); }
+.ap-bg-cyan { background: var(--cyan); } .ap-bg-green { background: var(--green); }
+.ap-bg-red { background: var(--red); } .ap-bg-magenta { background: var(--magenta); }
+.ap-bg-blue { background: var(--blue); } .ap-bg-light-gray { background: var(--light-gray); }
+
+/* ---------- InfoList: a dotted key, then a value that wraps under itself ---------- */
+.ap-info { margin: 0; padding: 0 var(--cell-w); }
+.ap-kv { display: flex; }
+.ap-kv dt { flex: 0 0 auto; white-space: pre; }
+.ap-kv dd { flex: 1 1 0; min-width: 0; margin: 0; padding-left: var(--cell-w); overflow-wrap: anywhere; }
+.ap-info .lt-val .lt-link { color: var(--link); }
+
+/* ---------- menu: links first, hotkeys second ---------- */
+.ap-menu { display: flex; flex-wrap: wrap; column-gap: var(--col-4); padding: 0 var(--cell-w); line-height: 2; }
+.ap-menu a { white-space: pre; }
+.lt-link:hover .lt-hot, .lt-link:focus-visible .lt-hot { color: var(--screen); }
+.lt-link:hover span, .lt-link:focus-visible span { color: var(--screen); }
+.ap-prompt { padding: 0 var(--cell-w); white-space: pre; }
+
+/* ---------- a post, on the home page and on its own ---------- */
+.ap-hero { display: flex; align-items: flex-start; gap: var(--col-4); padding: 0 var(--cell-w); }
+.ap-hero-text { flex: 1 1 0; min-width: 0; }
+.ap-title { margin: 0 0 var(--cell-w); font: inherit; font-size: 2em; line-height: 1; color: var(--text-bright);
+  text-transform: uppercase; overflow-wrap: anywhere; }
+.ap-title .lt-link { color: var(--text-bright); }
+.ap-title .lt-link:hover, .ap-title .lt-link:focus-visible { color: var(--screen); }
+.ap-meta { margin: 0; line-height: 1.5; }
+.ap-meta + .ap-meta { margin-top: 0; }
+.ap-sum { margin: var(--row-1) 0; line-height: 1.5; color: var(--text-bright); }
+.ap-go { margin: 0; white-space: pre; }
+
+.ap-card { display: flex; align-items: flex-start; gap: var(--col-2); padding: 0 var(--cell-w); }
+.ap-card + .ap-card { margin-top: var(--row-1); }
+.ap-card-title { margin: 0; font: inherit; color: var(--text-bright); text-transform: uppercase; }
+
+.ap-prose { padding: 0 var(--cell-w); max-width: 37em; line-height: 1.5; overflow-wrap: anywhere; }
+.ap-prose p { margin: 0 0 var(--row-1); }
+.ap-prose p:last-child { margin-bottom: 0; }
+.ap-prose em, .ap-prose strong { font-style: normal; font-weight: normal; color: var(--text-bright); }
+.ap-prose code { font: inherit; color: var(--ok); }
+.ap-list { margin: 0; padding: 0 var(--cell-w); list-style: none; line-height: 2; }
+.ap-list li { display: flex; }
+.ap-list time { flex: 0 0 auto; white-space: pre; }
+.ap-list a { flex: 1 1 0; min-width: 0; }
+.ap-egg { padding: 0 var(--cell-w); white-space: pre; }
+
+/* ---------- gallery: a model's still picture, and the canvas the script swaps in for it.
+   320 x 192 canvas pixels are 80 x 24 cells at two screen pixels each, and 40 x 12 on a phone. ---------- */
+.ap-view { display: block; width: 100%; aspect-ratio: 5 / 3; image-rendering: pixelated; touch-action: pan-y; cursor: grab; }
+.ap-view:focus-visible { outline: 2px solid var(--link-hover); outline-offset: -2px; }
+.ap-shot { display: flex; align-items: flex-start; gap: var(--col-2); padding: 0 var(--cell-w); }
+.ap-shot-text { flex: 1 1 0; min-width: 0; }
+.ap-thumb { flex: 0 0 auto; width: var(--cols-40); max-width: 100%; }
+
+/* ---------- 40 columns ---------- */
+@media (max-width: 640px) {
+  .lt-screen-auto { font-size: clamp(12px, calc((100vw - 1rem) / 20), 22px);
+    font-size: round(down, clamp(12px, calc((100vw - 1rem) / 20), 22px), 4px); }
+  .ap-wide { display: none; }
+  .ap-narrow { display: block; }
+  .ap-hero { flex-direction: column; gap: var(--row-1); }
+  .ap-shot { flex-direction: column; gap: 0; }
+  .ap-list li { display: block; line-height: 1.5; margin-bottom: var(--row-1); }
+  .ap-list time { display: block; }
+}
+
+/* ---------- modem reveal: what the script is waiting to paint ---------- */
+.ap-wait { visibility: hidden; }
