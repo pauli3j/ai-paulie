@@ -1,66 +1,16 @@
 /* AI-Paulie: the one script this site serves.
  *
- * Every page is complete without it. It adds four things: the dial-in reveal (the page paints
- * at modem speed, once a visit), hotkeys for the links already on the page, the speed picker,
- * and the model viewer (a 3D model already in the page, drawn on a canvas you can turn).
+ * Every page is complete without it. It does one thing: where a page carries a 3D model, it
+ * draws that model on a canvas, turns it slowly, and lets the visitor turn it by hand.
  *
- * It asks the network for nothing and builds no element except the reveal's cursor; the build
- * refuses this file if it ever names a way to do either (aipaulie/render.py, JS_BANNED). A model
- * is bytes in a data attribute of the page it is on, never something this file goes to get.
+ * It asks the network for nothing and builds no element; the build refuses this file if it ever
+ * names a way to do either (aipaulie/render.py, JS_BANNED). A model is bytes in a data attribute
+ * of the page it is on, never something this file goes to get.
  *
- * The reveal is 1337's modem utility, by way of knockknock's port of it.
  * Self-test: node static/assets/js/site.js
  */
 (function () {
 'use strict';
-
-var SPEEDS = [2400, 9600, 28800, 0];
-var DEFAULT = 28800, RUN_COST = 4;
-
-/* ---- pure parts (self-tested under node) -------------------------------- */
-
-function speedLabel(b) { return b > 0 ? String(b) : 'DIRECT'; }
-function nextSpeed(b) { return SPEEDS[(SPEEDS.indexOf(b) + 1) % SPEEDS.length]; }
-// ?baud=N in a query string, else the fallback. 0 means DIRECT.
-function baudFrom(search, fallback) {
-  var m = /[?&]baud=(\d{1,6})(?:&|$)/.exec(String(search || ''));
-  return m ? parseInt(m[1], 10) : fallback;
-}
-// What a stored speed means: one of SPEEDS, or null.
-function pickedFrom(stored) {
-  var n = parseInt(stored, 10);
-  return SPEEDS.indexOf(n) >= 0 ? n : null;
-}
-// The speed this page paints at. picked: the visitor's own choice this visit, or null.
-// seen: a page has already painted this visit.
-function planReveal(search, picked, seen, reduced) {
-  if (reduced) return 0;
-  var q = baudFrom(search, null);
-  if (q != null) return q;
-  if (picked != null) return picked;
-  return seen ? 0 : DEFAULT;
-}
-// The key a keydown means, or null when it is not ours to take.
-function keyOf(e) {
-  if (e.metaKey || e.ctrlKey || e.altKey) return null;
-  var k = String(e.key || '');
-  return k.length === 1 ? k.toLowerCase() : null;
-}
-// What `budget` bytes buy of one run: a run costs `cost` before its first character.
-function buy(budget, cost, left, fresh) {
-  if (fresh) {
-    if (budget < cost + 1) return { take: 0, budget: budget, wait: true };
-    budget -= cost;
-  }
-  var take = Math.min(Math.floor(budget), left);
-  return { take: take, budget: budget - take, wait: false };
-}
-// Where the selection bar goes next: wraps at both ends, starts at the top (or bottom).
-function step(count, at, dir) {
-  if (count < 1) return -1;
-  if (at < 0) return dir > 0 ? 0 : count - 1;
-  return (at + dir + count) % count;
-}
 
 /* ---- the model viewer's pure parts (aipaulie/mesh.py packs the bytes and keeps the same maths) ---- */
 
@@ -73,8 +23,11 @@ var RAMPS = { amber: ['brown', 'yellow'], green: ['green', 'light-green'], cyan:
   blue: ['blue', 'light-blue'] };
 var BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
 var LIGHT = [-0.42, 0.62, -0.66], CAMERA = 3.4, REST_YAW = -0.5, REST_PITCH = 1.05, REST_ZOOM = 1.15;
+var TURN = 0.3;                  // radians a second: the slow turn of a model nobody is holding
 
 function clamp(x, lo, hi) { return x < lo ? lo : (x > hi ? hi : x); }
+// A new tilt: never flat on, never from underneath.
+function tilt(pitch, by) { return clamp(pitch + by, 0.12, 1.5); }
 // 'green gray' -> one [dark, bright, white] ramp a part. Unknown names are dropped.
 function rampsFrom(names) {
   var out = String(names || '').split(/\s+/).filter(function (n) { return Object.prototype.hasOwnProperty.call(RAMPS, n); })
@@ -175,22 +128,6 @@ if (typeof document === 'undefined') {
   var eq = function (name, got, want) {
     if (JSON.stringify(got) !== JSON.stringify(want)) { fails++; console.log('FAIL ' + name + ': ' + JSON.stringify(got)); }
   };
-  eq('label', [speedLabel(28800), speedLabel(0)], ['28800', 'DIRECT']);
-  eq('cycle', [nextSpeed(2400), nextSpeed(9600), nextSpeed(28800), nextSpeed(0), nextSpeed(7)], [9600, 28800, 0, 2400, 2400]);
-  eq('baud', [baudFrom('?baud=2400', 1), baudFrom('?x=1&baud=0', 1), baudFrom('', 1), baudFrom('?baud=-5', 1), baudFrom('?baud=fast', null)], [2400, 0, 1, 1, null]);
-  eq('picked', [pickedFrom('9600'), pickedFrom('0'), pickedFrom('123'), pickedFrom(null), pickedFrom('x')], [9600, 0, null, null, null]);
-  eq('first page of a visit paints', planReveal('', null, false, false), 28800);
-  eq('later pages do not', planReveal('', null, true, false), 0);
-  eq('a picked speed paints every page', planReveal('', 2400, true, false), 2400);
-  eq('DIRECT stays direct', planReveal('', 0, false, false), 0);
-  eq('the query wins', planReveal('?baud=9600', 0, true, false), 9600);
-  eq('reduced motion never paints', [planReveal('?baud=9600', 2400, false, true)], [0]);
-  eq('keys', [keyOf({ key: 'A' }), keyOf({ key: '1' }), keyOf({ key: 'Enter' }), keyOf({ key: 'a', ctrlKey: true }), keyOf({})], ['a', '1', null, null, null]);
-  eq('a run waits for its cost', buy(4, 4, 10, true), { take: 0, budget: 4, wait: true });
-  eq('then pays it once', buy(10, 4, 10, true), { take: 6, budget: 0, wait: false });
-  eq('and not again', buy(5.5, 4, 2, false), { take: 2, budget: 3.5, wait: false });
-  eq('bar', [step(3, -1, 1), step(3, -1, -1), step(3, 2, 1), step(3, 0, -1), step(0, -1, 1)], [0, 2, 0, 2, -1]);
-
   // one triangle and its mirror image, packed the way aipaulie/mesh.py packs them
   var packOf = function (verts, tris, vsplit, tsplit) {
     var bytes = [65, 80, 77, 49], put = function (n) { n = n < 0 ? n + 65536 : n; bytes.push(n & 255, n >> 8); };
@@ -226,121 +163,33 @@ if (typeof document === 'undefined') {
   eq('a crease is a black line, a flat run is not', [line[0] + line[1] + line[2] > 0, line[4] + line[5] + line[6], line[8] + line[9] + line[10] > 0], [true, 0, true]);
   eq('ramps', [rampsFrom('green nope').length, rampsFrom('').length, rampsFrom('amber')[0][0]], [1, 1, [170, 85, 0]]);
   eq('clamp', [clamp(5, 0, 1), clamp(-5, 0, 1), clamp(0.5, 0, 1)], [1, 0, 0.5]);
-  console.log(fails ? fails + ' failed' : 'site.js: 27 checks ok');
+  eq('a tilt stops at its limits', [tilt(1, 5), tilt(1, -5), tilt(0.5, 0.25)], [1.5, 0.12, 0.75]);
+  console.log(fails ? fails + ' failed' : 'site.js: 13 checks ok');
   if (typeof process !== 'undefined') process.exit(fails ? 1 : 0);
   return;
 }
 
 /* ---- the page ----------------------------------------------------------- */
 
-var html = document.documentElement, started = false, running = null;
-
 function reducedMotion() { try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { return false; } }
-function recall(key) { try { return window.sessionStorage.getItem(key); } catch (e) { return null; } }
-function remember(key, value) { try { window.sessionStorage.setItem(key, value); } catch (e) {} }
-function show() { html.removeAttribute('data-modem'); }
-
-var picked = pickedFrom(recall('ap-baud'));
-var baud = planReveal(window.location.search, picked, recall('ap-seen') === '1', reducedMotion());
-remember('ap-seen', '1');
-if (baud > 0) {
-  // Hide the screen before it paints, so the reveal does not start with a flash of the whole
-  // page. If the reveal has not begun in three seconds, show the page as it is.
-  html.setAttribute('data-modem', '');
-  window.setTimeout(function () { if (!started) show(); }, 3000);
-}
-
-// Modem reveal: paints the text under `root` at baud / 10 characters a second (8N1), charging
-// RUN_COST bytes per colour change. Any key or tap finishes it.
-function modem(root, speed, done) {
-  var doc = root.ownerDocument, revealing = false, nodes = [];
-  var ctl = { finish: finish };
-  if (!(speed > 0) || reducedMotion()) { show(); if (done) done(); return ctl; }
-  function visible(el) {
-    var viaSummary = false;
-    for (; el && el !== doc.body; el = el.parentNode) {
-      if (el.nodeType !== 1) continue;
-      if (el.tagName === 'SUMMARY') viaSummary = true;
-      if (el.tagName === 'DETAILS' && !el.open && !viaSummary) return false;
-      if (window.getComputedStyle(el).display === 'none') return false;
-    }
-    return true;
-  }
-  var walker = doc.createTreeWalker(root, 5 /* elements and text */, null), n;
-  while ((n = walker.nextNode())) {
-    if (n.nodeType === 1) {
-      // the prompt's block cursor is a sized box that shows even when empty, so it waits its turn
-      if (n.classList.contains('lt-cursor') && visible(n)) { n.classList.add('ap-wait'); nodes.push({ el: n, text: '' }); }
-      continue;
-    }
-    // the line breaks between tags in the page source are not on the screen
-    if (!n.nodeValue.length || (!/\S/.test(n.nodeValue) && n.nodeValue.indexOf('\n') >= 0) || !visible(n.parentNode)) continue;
-    nodes.push({ node: n, text: n.nodeValue });
-    n.nodeValue = '';
-  }
-  revealing = true;
-  show();
-  var cps = speed / 10, cursor = doc.createElement('span');
-  cursor.className = 'lt-cursor';
-  var i = 0, pos = 0, budget = 0, last = window.performance.now();
-  function finish() {
-    if (!revealing) return;
-    revealing = false;
-    nodes.forEach(function (r) { if (r.el) r.el.classList.remove('ap-wait'); else r.node.nodeValue = r.text; });
-    if (cursor.parentNode) cursor.parentNode.removeChild(cursor);
-    doc.removeEventListener('keydown', skip, true); doc.removeEventListener('pointerdown', skip, true);
-    if (done) done();
-  }
-  function skip(e) {
-    if (!revealing) return;
-    if (e.type === 'keydown' && (e.metaKey || e.ctrlKey || e.altKey)) return;
-    e.preventDefault(); e.stopImmediatePropagation(); finish();
-  }
-  function frame(now) {
-    if (!revealing) return;
-    budget += (now - last) / 1000 * cps; last = now;
-    while (budget >= 1 && i < nodes.length) {
-      var r = nodes[i];
-      if (r.el) {
-        if (budget < RUN_COST + 1) break;
-        budget -= RUN_COST; r.el.classList.remove('ap-wait'); i++; continue;
-      }
-      var got = buy(budget, RUN_COST, r.text.length - pos, pos === 0);
-      if (got.wait) break;
-      budget = got.budget;
-      r.node.nodeValue += r.text.substr(pos, got.take);
-      pos += got.take;
-      if (r.node.parentNode) r.node.parentNode.insertBefore(cursor, r.node.nextSibling);
-      if (pos >= r.text.length) { i++; pos = 0; }
-    }
-    if (i >= nodes.length) return finish();
-    window.requestAnimationFrame(frame);
-  }
-  doc.addEventListener('keydown', skip, true); doc.addEventListener('pointerdown', skip, true);
-  window.requestAnimationFrame(frame);
-  return ctl;
-}
 
 // The model viewer: draws the page's own model on its canvas and lets the visitor turn it.
 // The page already shows a still picture of the model; this hides that and shows the canvas.
-function viewer(canvas) {
+function viewer(canvas, stagePage) {
   var mesh = unpack(canvas.getAttribute('data-mesh'));
   var ctx = mesh && canvas.getContext ? canvas.getContext('2d') : null;
   if (!ctx) return;
   var stage = canvas.parentNode, w = canvas.width, h = canvas.height;
   var frame = newFrame(w, h, mesh.nv), image = ctx.createImageData(w, h), ramps = rampsFrom(canvas.getAttribute('data-ramp'));
   var view = { yaw: REST_YAW, pitch: REST_PITCH, zoom: REST_ZOOM, lift: 0 };
-  var liftTo = 0, spin = !reducedMotion(), drag = null, dirty = true, last = 0;
+  var liftTo = 0, spin = !reducedMotion(), drag = null, dirty = true, last = 0, seen = true;
   var all = function (sel, fn) { Array.prototype.forEach.call(document.querySelectorAll(sel), fn); };
-  var solo = document.querySelectorAll('canvas[data-mesh]').length === 1;
   function labels() {
-    if (!solo) return;
+    if (!stagePage) return;
     all('[data-spin]', function (el) { el.textContent = spin ? 'on' : 'off'; });
     all('[data-lid]', function (el) { el.textContent = liftTo > 0 ? 'off' : 'on'; });
   }
-  function turn(dyaw, dpitch) {
-    view.yaw += dyaw; view.pitch = clamp(view.pitch + dpitch, 0.12, 1.5); dirty = true;
-  }
+  function turn(dyaw, dpitch) { view.yaw += dyaw; view.pitch = tilt(view.pitch, dpitch); dirty = true; }
   function act(what) {
     if (what === 'spin') spin = !spin;
     else if (what === 'lid') liftTo = liftTo > 0 ? 0 : 0.55;
@@ -350,12 +199,14 @@ function viewer(canvas) {
   }
   function tick(now) {
     var dt = Math.min(0.1, (now - last) / 1000); last = now;
-    if (spin && !drag) { view.yaw += dt * 0.45; dirty = true; }
-    if (view.lift !== liftTo) {
-      var gap = liftTo - view.lift, go = (reducedMotion() ? 99 : dt * 1.6) * (gap > 0 ? 1 : -1);
-      view.lift = Math.abs(go) >= Math.abs(gap) ? liftTo : view.lift + go; dirty = true;
+    if (seen) {
+      if (spin && !drag) { view.yaw += dt * TURN; dirty = true; }
+      if (view.lift !== liftTo) {
+        var gap = liftTo - view.lift, go = (reducedMotion() ? 99 : dt * 1.6) * (gap > 0 ? 1 : -1);
+        view.lift = Math.abs(go) >= Math.abs(gap) ? liftTo : view.lift + go; dirty = true;
+      }
+      if (dirty) { dirty = false; render(mesh, view, frame); paint(frame, ramps, image.data); ctx.putImageData(image, 0, 0); }
     }
-    if (dirty) { dirty = false; render(mesh, view, frame); paint(frame, ramps, image.data); ctx.putImageData(image, 0, 0); }
     window.requestAnimationFrame(tick);
   }
   canvas.addEventListener('pointerdown', function (e) {
@@ -370,15 +221,15 @@ function viewer(canvas) {
   });
   var drop = function (e) { if (drag && e.pointerId === drag.id) drag = null; };
   canvas.addEventListener('pointerup', drop); canvas.addEventListener('pointercancel', drop);
-  // Left and right turn it from anywhere on a page with one model; up and down tilt it only
-  // while the canvas has focus, because everywhere else they scroll.
+  // Left and right turn it from anywhere on a model's own page; everywhere else the arrow keys
+  // belong to the canvas only while it has focus, because up and down scroll the page.
   document.addEventListener('keydown', function (e) {
     if (e.metaKey || e.ctrlKey || e.altKey) return;
     var focused = document.activeElement === canvas, k = e.key;
-    if ((solo || focused) && (k === 'ArrowLeft' || k === 'ArrowRight')) { spin = false; labels(); turn(k === 'ArrowLeft' ? -0.14 : 0.14, 0); e.preventDefault(); }
+    if ((stagePage || focused) && (k === 'ArrowLeft' || k === 'ArrowRight')) { spin = false; labels(); turn(k === 'ArrowLeft' ? -0.14 : 0.14, 0); e.preventDefault(); }
     else if (focused && (k === 'ArrowUp' || k === 'ArrowDown')) { turn(0, k === 'ArrowUp' ? -0.1 : 0.1); e.preventDefault(); }
   });
-  if (solo) {
+  if (stagePage) {
     all('[data-view]', function (el) {
       el.addEventListener('click', function (e) { e.preventDefault(); act(el.getAttribute('data-view')); });
     });
@@ -386,55 +237,23 @@ function viewer(canvas) {
     all('[data-view-ui]', function (el) { el.removeAttribute('hidden'); });
     labels();
   }
+  // A model that is off the screen is not drawn.
+  if (typeof window.IntersectionObserver === 'function') {
+    new window.IntersectionObserver(function (entries) {
+      entries.forEach(function (en) { seen = en.isIntersecting; if (seen) dirty = true; });
+    }).observe(canvas);
+  }
   all('[data-still]', function (el) { if (el.parentNode === stage) el.hidden = true; });
   canvas.removeAttribute('hidden');
   window.requestAnimationFrame(tick);
 }
 
 function boot() {
-  var screen = document.querySelector('.lt-screen');
-  if (!screen) { show(); return; }
-  var each = function (sel, fn) { Array.prototype.forEach.call(screen.querySelectorAll(sel), fn); };
-  var current = function () { return reducedMotion() ? 0 : (picked != null ? picked : DEFAULT); };
-  function labels() {
-    each('[data-speed]', function (el) { el.textContent = speedLabel(current()); });
-    each('[data-connect]', function (el) { el.textContent = current() > 0 ? 'CONNECT ' + current() : 'DIRECT'; });
-  }
-  function paint(speed) {
-    if (running) running.finish();
-    running = modem(screen, speed, function () { running = null; });
-  }
-  function cycle() {
-    picked = nextSpeed(current());
-    remember('ap-baud', String(picked));
-    labels();
-    paint(picked);
-  }
-  function move(dir) {
-    var links = Array.prototype.filter.call(screen.querySelectorAll('a[href]'), function (a) { return a.offsetParent !== null; });
-    var to = step(links.length, links.indexOf(document.activeElement), dir);
-    if (to >= 0) links[to].focus();
-  }
-  each('[data-js]', function (el) { el.removeAttribute('hidden'); });
-  labels();
-  each('[data-key="s"]', function (el) { el.addEventListener('click', function (e) { e.preventDefault(); cycle(); }); });
-  document.addEventListener('keydown', function (e) {
-    var key = keyOf(e);
-    if (!key) return;
-    if (key === 'j' || key === 'k') { e.preventDefault(); move(key === 'j' ? 1 : -1); return; }
-    var link = screen.querySelector('a[data-key="' + key.replace(/[^a-z0-9]/g, '') + '"]');
-    if (!link || link.offsetParent === null) return;
-    e.preventDefault();
-    each('[data-echo]', function (el) { el.textContent = key.toUpperCase(); });
-    link.click();
-  });
-  // before the reveal starts, so it paints the page as the viewer leaves it
-  Array.prototype.forEach.call(document.querySelectorAll('canvas[data-mesh]'), function (c) { try { viewer(c); } catch (e) {} });
-  started = true;
-  paint(baud);
+  var found = document.querySelectorAll('canvas[data-mesh]');
+  var stagePage = found.length === 1 && !!document.querySelector('[data-view-ui]');
+  Array.prototype.forEach.call(found, function (c) { try { viewer(c, stagePage); } catch (e) {} });
 }
 
-function safely() { try { boot(); } catch (e) { started = true; show(); } }
-if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', safely);
-else safely();
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+else boot();
 })();
